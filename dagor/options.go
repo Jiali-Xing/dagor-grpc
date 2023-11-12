@@ -81,5 +81,11 @@ func NewDagorNode(params *DagorParam) *Dagor {
 			dagor.C.Store([2]int{B, U}, 0)
 		}
 	}
+
+	if !dagor.isEnduser {
+		// go run updateAdmissionLevel(dagor)
+		go dagor.UpdateAdmissionLevel()
+	}
+
 	return &dagor
 }

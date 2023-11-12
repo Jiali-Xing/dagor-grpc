@@ -107,9 +107,10 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 	// If the request's B and U don't meet the threshold, drop the request
 	if B < currentThresholdB || U < currentThresholdU {
 		logger("Request B, U %d, %d values are below the threshold %d, %d", B, U, currentThresholdB, currentThresholdU)
+		d.UpdateHistogram(false, B, U)
 		return nil, status.Errorf(codes.ResourceExhausted, "Request B, U values are below the threshold")
 	}
-
+	d.UpdateHistogram(true, B, U)
 	// Modify ctx with the B and U
 	ctx = metadata.AppendToOutgoingContext(ctx, "B", strconv.Itoa(B), "U", strconv.Itoa(U))
 
@@ -176,6 +177,8 @@ func (d *Dagor) UpdateAdmissionLevel() {
 		foverload := gapLatency > float64(d.queuingThresh.Milliseconds())
 		Bstar, Ustar := d.CalculateAdmissionLevel(foverload)
 
+		d.ResetHistogram()
+
 		// Update the admission level with the new values
 		d.admissionLevel.Store("B", Bstar)
 		d.admissionLevel.Store("U", Ustar)
@@ -200,9 +203,38 @@ func (d *Dagor) ResetHistogram() {
 	})
 }
 
-func (d *Dagor) UpdateHistogram(r int) {
+func (d *Dagor) UpdateHistogram(admitted bool, B, U int) {
 	// Update the C matrix with the new histogram value
-	// The implementation details of this will depend on how you're tracking requests
+	// increment the counter N
+	d.IncrementN()
+
+	if admitted {
+		key := [2]int{B, U}
+
+		// This loop ensures that we keep trying to update the value
+		// until we are successful in case of concurrent updates
+		for {
+			// Load the current value
+			val, loaded := d.C.Load(key)
+			var count int64
+			if loaded {
+				count = val.(int64)
+			}
+			// Attempt to increment the counter
+			count++
+			// Store the incremented count using CompareAndSwap
+			// This is thread-safe because it only succeeds if the value hasn't been changed by another goroutine in the meantime
+			if !loaded {
+				d.C.Store(key, count)
+				break
+			} else {
+				// Compare and swap the value if it's still the same; otherwise, the loop will retry
+				if d.C.CompareAndSwap(key, val, count) {
+					break
+				}
+			}
+		}
+	}
 }
 
 // CalculateAdmissionLevel adjusts the B and U based on the overload flag
