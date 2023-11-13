@@ -42,9 +42,11 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 			userID := userIDs[0]
 			if val, ok := d.userPriority.Load(userID); ok {
 				U = val.(int)
+				logger("User %s already has a priority value assigned: %d", userID, U)
 			} else {
-				U = rand.Intn(100) // Assign a random int for U
+				U = rand.Intn(d.Umax) // Assign a random int for U
 				d.userPriority.Store(userID, U)
+				logger("User %s assigned a priority value: %d", userID, U)
 			}
 		}
 		logger("[Entry service] assigned B: %d, U: %d", d.nodeName, B, U)
