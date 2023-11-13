@@ -250,6 +250,7 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 		Nexp = int64((1 + d.beta) * float64(Nexp))
 	}
 
+	logger("Nexp updated from %d to %d", d.N, Nexp)
 	Bstar, Ustar := 0, 0
 	// Nprefix int64
 	Nprefix := int64(0)

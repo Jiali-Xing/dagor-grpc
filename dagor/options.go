@@ -53,7 +53,7 @@ type DagorParam struct {
 }
 
 // NewDagorNode creates a new DAGOR node without a UUID.
-func NewDagorNode(params *DagorParam) *Dagor {
+func NewDagorNode(params DagorParam) *Dagor {
 	dagor := Dagor{
 		nodeName:                     params.NodeName,
 		uuid:                         params.UUID,
