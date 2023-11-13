@@ -200,7 +200,7 @@ func (d *Dagor) ResetHistogram() {
 	d.UpdateN(0)
 	// Reset the C matrix which holds the admitted request counters
 	d.C.Range(func(key, value interface{}) bool {
-		d.C.Store(key, 0)
+		d.C.Store(key, int64(0))
 		return true
 	})
 }

@@ -78,7 +78,7 @@ func NewDagorNode(params *DagorParam) *Dagor {
 	// Initialize the C matrix with the initial counters for each B, U pair
 	for B := 1; B <= params.Bmax; B++ {
 		for U := 1; U <= params.Umax; U++ {
-			dagor.C.Store([2]int{B, U}, 0)
+			dagor.C.Store([2]int{B, U}, int64(0))
 		}
 	}
 
