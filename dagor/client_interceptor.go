@@ -20,11 +20,12 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 	// if d.isEnduser, attach user id to metadata and send request
 	if d.isEnduser {
 		ctx = metadata.AppendToOutgoingContext(ctx, "user-id", d.uuid)
-		logger("[Client] %s is an end user", d.uuid)
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		if err != nil {
+			logger("[End User] %s is an end user, req got error: %v", d.uuid, err)
 			return err
 		}
+		logger("[End User] %s is an end user, req completed", d.uuid)
 		return nil
 	}
 

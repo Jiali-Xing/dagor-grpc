@@ -213,31 +213,30 @@ func (d *Dagor) UpdateHistogram(admitted bool, B, U int) {
 	// Update the C matrix with the new histogram value
 	// increment the counter N
 	d.IncrementN()
-
+	logger("[UpdateHistogram] N incremented to %d", d.ReadN())
 	if admitted {
 		key := [2]int{B, U}
-
 		// This loop ensures that we keep trying to update the value
 		// until we are successful in case of concurrent updates
 		for {
 			// Load the current value
 			val, loaded := d.C.Load(key)
-			var count int64
-			if loaded {
-				count = val.(int64)
-			}
-			// Attempt to increment the counter
-			count++
 			// Store the incremented count using CompareAndSwap
 			// This is thread-safe because it only succeeds if the value hasn't been changed by another goroutine in the meantime
 			if !loaded {
-				d.C.Store(key, count)
-				break
+				// If the key doesn't exist, initialize it to 1
+				// Since we are in a loop, we need to check if the initialization was successful
+				if d.C.CompareAndSwap(key, nil, int64(1)) {
+					break
+				}
+				logger("[UpdateHistogram] C [%d, %d] (B, U) counter initialized to 1", B, U)
 			} else {
+				count := val.(int64) + 1
 				// Compare and swap the value if it's still the same; otherwise, the loop will retry
 				if d.C.CompareAndSwap(key, val, count) {
 					break
 				}
+				logger("[UpdateHistogram] C [%d, %d] (B, U) counter incremented to %d", B, U, count)
 			}
 		}
 	}
@@ -250,11 +249,12 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 	// Adjust Nexp based on overload
 	if foverload {
 		Nexp = int64((1 - d.alpha) * float64(Nexp))
+		logger("[CalculateAdmissionLevel] overload detected, Nexp updated from %d to %d", d.N, Nexp)
 	} else {
 		Nexp = int64((1 + d.beta) * float64(Nexp))
+		logger("[CalculateAdmissionLevel] no overload detected, Nexp updated from %d to %d", d.N, Nexp)
 	}
 
-	logger("Nexp updated from %d to %d", d.N, Nexp)
 	Bstar, Ustar := 0, 0
 	// Nprefix int64
 	Nprefix := int64(0)
@@ -267,8 +267,10 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 			Nprefix += val.(int64)
 
 			if Nprefix > Nexp {
-
+				logger("[CalculateAdmissionLevel] Nprefix %d > Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
 				return Bstar, Ustar
+			} else {
+				logger("[CalculateAdmissionLevel] Nprefix %d <= Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
 			}
 			Bstar, Ustar = B, U
 		}
