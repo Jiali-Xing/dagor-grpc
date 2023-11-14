@@ -263,14 +263,15 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 	for B := 1; B <= d.Bmax; B++ {
 		for U := 1; U <= d.Umax; U++ {
 			// Retrieve the count for this B, U combination from the C matrix
-			val, _ := d.C.Load([2]int{B, U})
-			Nprefix += val.(int64)
-
-			if Nprefix > Nexp {
-				logger("[CalculateAdmissionLevel] Nprefix %d > Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
-				return Bstar, Ustar
-			} else {
-				logger("[CalculateAdmissionLevel] Nprefix %d <= Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
+			val, loaded := d.C.Load([2]int{B, U})
+			if loaded {
+				Nprefix += val.(int64)
+				if Nprefix > Nexp {
+					logger("[CalculateAdmissionLevel] Nprefix %d > Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
+					return Bstar, Ustar
+				} else {
+					logger("[CalculateAdmissionLevel] Nprefix %d <= Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
+				}
 			}
 			Bstar, Ustar = B, U
 		}
