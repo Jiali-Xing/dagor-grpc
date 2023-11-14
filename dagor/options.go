@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var debug = true
@@ -40,7 +42,6 @@ type thresholdVal struct {
 
 type DagorParam struct {
 	NodeName                     string
-	UUID                         string
 	BusinessMap                  map[string]int
 	QueuingThresh                time.Duration
 	EntryService                 bool
@@ -56,7 +57,7 @@ type DagorParam struct {
 func NewDagorNode(params DagorParam) *Dagor {
 	dagor := Dagor{
 		nodeName:                     params.NodeName,
-		uuid:                         params.UUID,
+		uuid:                         uuid.New().String(),
 		businessMap:                  params.BusinessMap,
 		queuingThresh:                params.QueuingThresh,
 		userPriority:                 sync.Map{}, // Initialize as empty concurrent map
@@ -86,6 +87,19 @@ func NewDagorNode(params DagorParam) *Dagor {
 		// go run updateAdmissionLevel(dagor)
 		go dagor.UpdateAdmissionLevel()
 	}
+
+	// log all the parameters
+	logger("Node name: %s", dagor.nodeName)
+	logger("UUID: %s", dagor.uuid)
+	logger("Business map: %v", dagor.businessMap)
+	logger("Queuing threshold: %v", dagor.queuingThresh)
+	logger("Entry service: %v", dagor.entryService)
+	logger("Is end user: %v", dagor.isEnduser)
+	logger("Admission level update interval: %v", dagor.admissionLevelUpdateInterval)
+	logger("Alpha: %v", dagor.alpha)
+	logger("Beta: %v", dagor.beta)
+	logger("Umax: %v", dagor.Umax)
+	logger("Bmax: %v", dagor.Bmax)
 
 	return &dagor
 }

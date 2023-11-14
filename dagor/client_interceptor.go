@@ -20,6 +20,7 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 	// if d.isEnduser, attach user id to metadata and send request
 	if d.isEnduser {
 		ctx = metadata.AppendToOutgoingContext(ctx, "user-id", d.uuid)
+		logger("[Client] %s is an end user", d.uuid)
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		if err != nil {
 			return err
@@ -47,7 +48,7 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 		// if B or U not in metadata, this client is end user
 		// mark this client as end user
 		d.isEnduser = true
-		logger("Client %s is an end user", d.nodeName)
+		logger("No B or U received. Client %s marked as an end user", d.uuid)
 		// attach user id to metadata
 		ctx = metadata.AppendToOutgoingContext(ctx, "user-id", d.uuid)
 		err := invoker(ctx, method, req, reply, cc, opts...)
@@ -67,10 +68,14 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 	val, ok := d.thresholdTable.Load(methodName[0])
 	if ok {
 		threshold := val.(thresholdVal)
-		// threshold, exists := d.thresholdTable[methodName[0]]
 		if B < threshold.Bstar || U < threshold.Ustar {
+			logger("[Ratelimiting] B %d or U %d value below the threshold B* %d or U* %d, request dropped", B, U, threshold.Bstar, threshold.Ustar)
 			return status.Errorf(codes.ResourceExhausted, "B or U value below the threshold, request dropped")
 		}
+		logger("[Ratelimiting] B %d and U %d values above the threshold B* %d and U* %d, request sent", B, U, threshold.Bstar, threshold.Ustar)
+	} else {
+		logger("[Ratelimiting] B* and U* values not found in the threshold table for method %s, request dropped", methodName[0])
+		// return status.Errorf(codes.ResourceExhausted, "B* and U* values not found in the threshold table, request dropped")
 	}
 	// Modify ctx with the B and U
 	ctx = metadata.AppendToOutgoingContext(ctx, "B", strconv.Itoa(B), "U", strconv.Itoa(U))

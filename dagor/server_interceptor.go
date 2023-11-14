@@ -35,21 +35,25 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 		methodName := methodNames[0]
 		if businessValue, exists := d.businessMap[methodName]; exists {
 			B = businessValue
+			logger("[Entry service] Entry service found Business value %d for method %s", B, methodName)
 		} else {
+			// can't find the business value from businessMap
 			return nil, status.Errorf(codes.Internal, "Business value for method %s not found", methodName)
 		}
 		if userIDExists && len(userIDs) > 0 {
 			userID := userIDs[0]
 			if val, ok := d.userPriority.Load(userID); ok {
 				U = val.(int)
-				logger("User %s already has a priority value assigned: %d", userID, U)
+				logger("[Entry service] User %s already has a priority value assigned: %d", userID, U)
 			} else {
 				U = rand.Intn(d.Umax) // Assign a random int for U
 				d.userPriority.Store(userID, U)
 				logger("User %s assigned a priority value: %d", userID, U)
 			}
+		} else {
+			return nil, status.Errorf(codes.InvalidArgument, "User ID not provided in metadata")
 		}
-		logger("[Entry service] assigned B: %d, U: %d", d.nodeName, B, U)
+		logger("[Entry service] assigned user %s B: %d, U: %d", d.nodeName, B, U)
 	} else {
 		BValues, BExists := md["B"]
 		UValues, UExists := md["U"]
@@ -59,7 +63,7 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 		if !BExists || !UExists {
 			// mark this node as entry service
 			d.entryService = true
-			logger("Node %s is assigned as an entry service", d.nodeName)
+			logger("B or U not found. Node %s is assigned as an entry service", d.nodeName)
 		}
 
 		// Assign B based on method from businessMap or metadata
@@ -169,11 +173,11 @@ func (d *Dagor) UpdateAdmissionLevel() {
 		}
 		gapLatency := maximumQueuingDelayms(prevHist, currHist)
 
-		// Load the current threshold values for B and U
-		currentThresholdBVal, _ := d.admissionLevel.Load("B")
-		currentThresholdUVal, _ := d.admissionLevel.Load("U")
-		currentThresholdB := currentThresholdBVal.(int)
-		currentThresholdU := currentThresholdUVal.(int)
+		// // Load the current threshold values for B and U
+		// currentThresholdBVal, _ := d.admissionLevel.Load("B")
+		// currentThresholdUVal, _ := d.admissionLevel.Load("U")
+		// currentThresholdB := currentThresholdBVal.(int)
+		// currentThresholdU := currentThresholdUVal.(int)
 
 		// update the threshold
 		foverload := gapLatency > float64(d.queuingThresh.Milliseconds())
@@ -185,7 +189,7 @@ func (d *Dagor) UpdateAdmissionLevel() {
 		d.admissionLevel.Store("B", Bstar)
 		d.admissionLevel.Store("U", Ustar)
 
-		logger("Updated threshold B, U: %d, %d", currentThresholdB, currentThresholdU)
+		logger("Updated admission level threshold B, U: %d, %d", Bstar, Ustar)
 
 		// Update prevHist for the next iteration
 		prevHist = currHist
