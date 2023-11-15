@@ -265,7 +265,7 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 			val, loaded := d.C.Load([2]int{B, U})
 			if loaded {
 				Nprefix += val.(int64)
-				if Nprefix > Nexp {
+				if Nprefix >= Nexp {
 					logger("[CalculateAdmissionLevel] Nprefix %d > Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
 					return Bstar, Ustar
 					// } else {
