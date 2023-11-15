@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"runtime/metrics"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
@@ -244,15 +243,15 @@ func (d *Dagor) UpdateHistogram(admitted bool, B, U int) {
 
 // CalculateAdmissionLevel adjusts the B and U based on the overload flag
 func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
-	Nexp := atomic.LoadInt64(&d.N)
+	Nexp := d.ReadN()
 
 	// Adjust Nexp based on overload
 	if foverload {
 		Nexp = int64((1 - d.alpha) * float64(Nexp))
-		logger("[CalculateAdmissionLevel] overload detected, Nexp updated from %d to %d", d.N, Nexp)
+		logger("[CalculateAdmissionLevel] overload detected, Nexp updated from %d to %d", d.ReadN(), Nexp)
 	} else {
 		Nexp = int64((1 + d.beta) * float64(Nexp))
-		logger("[CalculateAdmissionLevel] no overload detected, Nexp updated from %d to %d", d.N, Nexp)
+		logger("[CalculateAdmissionLevel] no overload detected, Nexp updated from %d to %d", d.ReadN(), Nexp)
 	}
 
 	Bstar, Ustar := 0, 0
@@ -269,8 +268,8 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 				if Nprefix > Nexp {
 					logger("[CalculateAdmissionLevel] Nprefix %d > Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
 					return Bstar, Ustar
-				} else {
-					logger("[CalculateAdmissionLevel] Nprefix %d <= Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
+					// } else {
+					// logger("[CalculateAdmissionLevel] Nprefix %d <= Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
 				}
 			}
 			Bstar, Ustar = B, U
