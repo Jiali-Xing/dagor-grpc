@@ -258,9 +258,12 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 	// Nprefix int64
 	Nprefix := int64(0)
 
-	// Iterate over the range of B and U values
-	for B := 1; B <= d.Bmax; B++ {
-		for U := 1; U <= d.Umax; U++ {
+	// Iterate over the range of B and U values. but notice that the loop starts from the max values.
+	// the paper says that the loop starts from the min values, but it doesn't make sense to me.
+	// for B := 1; B <= d.Bmax; B++ {
+	// 	for U := 1; U <= d.Umax; U++ {
+	for B := d.Bmax; B >= 1; B-- {
+		for U := d.Umax; U >= 1; U-- {
 			// Retrieve the count for this B, U combination from the C matrix
 			val, loaded := d.C.Load([2]int{B, U})
 			if loaded {
