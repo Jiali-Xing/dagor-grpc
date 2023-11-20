@@ -226,16 +226,16 @@ func (d *Dagor) UpdateHistogram(admitted bool, B, U int) {
 				// If the key doesn't exist, initialize it to 1
 				// Since we are in a loop, we need to check if the initialization was successful
 				if d.C.CompareAndSwap(key, nil, int64(1)) {
+					logger("[UpdateHistogram] C [%d, %d] (B, U) counter initialized to 1", B, U)
 					break
 				}
-				logger("[UpdateHistogram] C [%d, %d] (B, U) counter initialized to 1", B, U)
 			} else {
 				count := val.(int64) + 1
 				// Compare and swap the value if it's still the same; otherwise, the loop will retry
 				if d.C.CompareAndSwap(key, val, count) {
+					logger("[UpdateHistogram] C [%d, %d] (B, U) counter incremented to %d", B, U, count)
 					break
 				}
-				logger("[UpdateHistogram] C [%d, %d] (B, U) counter incremented to %d", B, U, count)
 			}
 		}
 	}
