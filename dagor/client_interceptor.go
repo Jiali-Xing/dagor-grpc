@@ -46,17 +46,21 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 	UValues, UExists := md["U"]
 
 	if !BExists || !UExists {
-		// if B or U not in metadata, this client is end user
-		// mark this client as end user
-		d.isEnduser = true
-		logger("No B or U received. Client %s marked as an end user", d.uuid)
-		// attach user id to metadata
-		ctx = metadata.AppendToOutgoingContext(ctx, "user-id", d.uuid)
-		err := invoker(ctx, method, req, reply, cc, opts...)
-		if err != nil {
-			return err
+		// if B or U not in metadata, this client is end user, otherwise, fatal error
+		if !d.isEnduser {
+			logger("B or U not found in metadata, fatal error")
+			return status.Errorf(codes.InvalidArgument, "B or U not found in metadata, fatal error")
 		}
-		return nil
+		// // mark this client as end user
+		// d.isEnduser = true
+		// logger("No B or U received. Client %s marked as an end user", d.uuid)
+		// // attach user id to metadata
+		// ctx = metadata.AppendToOutgoingContext(ctx, "user-id", d.uuid)
+		// err := invoker(ctx, method, req, reply, cc, opts...)
+		// if err != nil {
+		// 	return err
+		// }
+		// return nil
 	}
 
 	var B, U int

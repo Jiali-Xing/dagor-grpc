@@ -61,8 +61,11 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 		// if no B or U in metadata, this is an entry service
 		if !BExists || !UExists {
 			// mark this node as entry service
-			d.entryService = true
-			logger("B or U not found. Node %s is assigned as an entry service", d.nodeName)
+			// d.entryService = true
+			// logger("B or U not found. Node %s is assigned as an entry service", d.nodeName)
+			if !d.entryService {
+				return nil, status.Errorf(codes.InvalidArgument, "B or U not found in metadata, fatal error")
+			}
 		}
 
 		// Assign B based on method from businessMap or metadata
@@ -185,10 +188,16 @@ func (d *Dagor) UpdateAdmissionLevel() {
 		d.ResetHistogram()
 
 		// Update the admission level with the new values
-		d.admissionLevel.Store("B", Bstar)
-		d.admissionLevel.Store("U", Ustar)
+		// d.admissionLevel.Store("B", Bstar)
+		// d.admissionLevel.Store("U", Ustar)
+		// get and update the current threshold values for B and U
+		currentThresholdBVal, _ := d.admissionLevel.Swap("B", Bstar)
+		currentThresholdUVal, _ := d.admissionLevel.Swap("U", Ustar)
 
-		logger("Updated admission level threshold B, U: %d, %d", Bstar, Ustar)
+		// If the threshold has changed, log the new values
+		if Bstar != currentThresholdBVal.(int) || Ustar != currentThresholdUVal.(int) {
+			logger("Updated admission level threshold B, U: %d, %d", Bstar, Ustar)
+		}
 
 		// Update prevHist for the next iteration
 		prevHist = currHist
