@@ -52,7 +52,7 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 		} else {
 			return nil, status.Errorf(codes.InvalidArgument, "User ID not provided in metadata")
 		}
-		logger("[Entry service] assigned user %s B: %d, U: %d", d.nodeName, B, U)
+		logger("[Entry service] %s assigned user B: %d, U: %d", d.nodeName, B, U)
 	} else {
 		BValues, BExists := md["B"]
 		UValues, UExists := md["U"]
@@ -64,6 +64,7 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 			// d.entryService = true
 			// logger("B or U not found. Node %s is assigned as an entry service", d.nodeName)
 			if !d.entryService {
+				logger("[UnaryInterceptorServer] not a entry service. B or U not found in metadata, fatal error")
 				return nil, status.Errorf(codes.InvalidArgument, "B or U not found in metadata, fatal error")
 			}
 		}
