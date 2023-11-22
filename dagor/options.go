@@ -50,7 +50,7 @@ type DagorParam struct {
 	Beta                         float64
 	Umax                         int
 	Bmax                         int
-	debug                        bool
+	Debug                        bool
 }
 
 // NewDagorNode creates a new DAGOR node without a UUID.
