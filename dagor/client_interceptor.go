@@ -48,7 +48,7 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 	if !BExists || !UExists {
 		// if B or U not in metadata, this client is end user, otherwise, fatal error
 		if !d.isEnduser {
-			logger("B or U not found in metadata, fatal error")
+			logger("[Client Sending Req] not an enduser and B or U not found in metadata, fatal error")
 			return status.Errorf(codes.InvalidArgument, "B or U not found in metadata, fatal error")
 		}
 		// // mark this client as end user
