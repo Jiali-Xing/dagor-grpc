@@ -119,7 +119,7 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 	if B < currentThresholdB || U < currentThresholdU {
 		logger("Request B, U %d, %d values are below the threshold %d, %d", B, U, currentThresholdB, currentThresholdU)
 		d.UpdateHistogram(false, B, U)
-		return nil, status.Errorf(codes.ResourceExhausted, "Request B, U values are below the threshold")
+		return nil, status.Errorf(codes.ResourceExhausted, "[Server Admission Control] Request B, U values are below the threshold")
 	}
 	d.UpdateHistogram(true, B, U)
 

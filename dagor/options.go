@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var debug = true
+var debug bool
 
 // Dagor is the DAGOR network.
 type Dagor struct {
@@ -50,6 +50,7 @@ type DagorParam struct {
 	Beta                         float64
 	Umax                         int
 	Bmax                         int
+	debug                        bool
 }
 
 // NewDagorNode creates a new DAGOR node without a UUID.
@@ -99,6 +100,7 @@ func NewDagorNode(params DagorParam) *Dagor {
 	logger("Beta: %v", dagor.beta)
 	logger("Umax: %v", dagor.Umax)
 	logger("Bmax: %v", dagor.Bmax)
-
+	debug = params.debug
+	logger("Debug: %v", debug)
 	return &dagor
 }

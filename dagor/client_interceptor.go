@@ -75,7 +75,7 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 		threshold := val.(thresholdVal)
 		if B < threshold.Bstar || U < threshold.Ustar {
 			logger("[Ratelimiting] B %d or U %d value below the threshold B* %d or U* %d, request dropped", B, U, threshold.Bstar, threshold.Ustar)
-			return status.Errorf(codes.ResourceExhausted, "B or U value below the threshold, request dropped")
+			return status.Errorf(codes.ResourceExhausted, "[Local Admission Control] B or U value below the threshold B* or U*, request dropped")
 		}
 		logger("[Ratelimiting] B %d and U %d values above the threshold B* %d and U* %d, request sent", B, U, threshold.Bstar, threshold.Ustar)
 	} else {
