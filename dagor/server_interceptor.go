@@ -64,7 +64,7 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 			// d.entryService = true
 			// logger("B or U not found. Node %s is assigned as an entry service", d.nodeName)
 			if !d.entryService {
-				logger("[UnaryInterceptorServer] not a entry service. B or U not found in metadata, fatal error")
+				logger("[UnaryInterceptorServer] %s is not a entry service. B or U not found in metadata, fatal error", d.nodeName)
 				return nil, status.Errorf(codes.InvalidArgument, "B or U not found in metadata, fatal error")
 			}
 		}
