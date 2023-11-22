@@ -53,11 +53,13 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 			return nil, status.Errorf(codes.InvalidArgument, "User ID not provided in metadata")
 		}
 		logger("[Entry service] %s assigned user B: %d, U: %d", d.nodeName, B, U)
+		// Modify ctx with the B and U
+		ctx = metadata.AppendToOutgoingContext(ctx, "b", strconv.Itoa(B), "u", strconv.Itoa(U))
 	} else {
-		BValues, BExists := md["B"]
-		UValues, UExists := md["U"]
+		BValues, BExists := md["b"]
+		UValues, UExists := md["u"]
 
-		methodName := methodNames[0]
+		// methodName := methodNames[0]
 		// if no B or U in metadata, this is an entry service
 		if !BExists || !UExists {
 			// mark this node as entry service
@@ -69,43 +71,43 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 			}
 		}
 
-		// Assign B based on method from businessMap or metadata
-		if !BExists || len(BValues) == 0 {
-			if businessValue, exists := d.businessMap[methodName]; exists {
-				B = businessValue
-			} else {
-				return nil, status.Errorf(codes.Internal, "Business value for method %s not found", methodName)
-			}
-			logger("B value not provided in metadata, assigned B: %d", B)
-		} else {
-			B, err = strconv.Atoi(BValues[0])
-			if err != nil {
-				return nil, status.Errorf(codes.InvalidArgument, "Invalid B value: %v", BValues[0])
-			}
-			logger("B value provided in metadata: %d", B)
+		// // Assign B based on method from businessMap or metadata
+		// if !BExists || len(BValues) == 0 {
+		// 	if businessValue, exists := d.businessMap[methodName]; exists {
+		// 		B = businessValue
+		// 	} else {
+		// 		return nil, status.Errorf(codes.Internal, "Business value for method %s not found", methodName)
+		// 	}
+		// 	logger("B value not provided in metadata, assigned B: %d", B)
+		// } else {
+		B, err = strconv.Atoi(BValues[0])
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid B value: %v", BValues[0])
 		}
+		logger("[DagorServer] B value provided in metadata: %d", B)
+		// }
 
 		// Assign U based on user-id from userPriority or metadata
-		if !UExists || len(UValues) == 0 {
-			if userIDExists && len(userIDs) > 0 {
-				userID := userIDs[0]
-				if val, ok := d.userPriority.Load(userID); ok {
-					U = val.(int)
-				} else {
-					U = rand.Intn(100) // Assign a random int for U
-					d.userPriority.Store(userID, U)
-				}
-			} else {
-				return nil, status.Errorf(codes.InvalidArgument, "User ID not provided in metadata")
-			}
-			logger("U value not provided in metadata, assigned U: %d", U)
-		} else {
-			U, err = strconv.Atoi(UValues[0])
-			if err != nil {
-				return nil, status.Errorf(codes.InvalidArgument, "Invalid U value: %v", UValues[0])
-			}
-			logger("U value provided in metadata: %d", U)
+		// if !UExists || len(UValues) == 0 {
+		// 	if userIDExists && len(userIDs) > 0 {
+		// 		userID := userIDs[0]
+		// 		if val, ok := d.userPriority.Load(userID); ok {
+		// 			U = val.(int)
+		// 		} else {
+		// 			U = rand.Intn(100) // Assign a random int for U
+		// 			d.userPriority.Store(userID, U)
+		// 		}
+		// 	} else {
+		// 		return nil, status.Errorf(codes.InvalidArgument, "User ID not provided in metadata")
+		// 	}
+		// 	logger("U value not provided in metadata, assigned U: %d", U)
+		// } else {
+		U, err = strconv.Atoi(UValues[0])
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid U value: %v", UValues[0])
 		}
+		logger("[DagorServer] U value provided in metadata: %d", U)
+		// }
 	}
 	// Retrieve current thresholds from admissionLevel
 	currentThresholdBVal, _ := d.admissionLevel.Load("B")
@@ -120,8 +122,6 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 		return nil, status.Errorf(codes.ResourceExhausted, "Request B, U values are below the threshold")
 	}
 	d.UpdateHistogram(true, B, U)
-	// Modify ctx with the B and U
-	ctx = metadata.AppendToOutgoingContext(ctx, "B", strconv.Itoa(B), "U", strconv.Itoa(U))
 
 	// Handle the request
 	resp, err := handler(ctx, req)
@@ -130,7 +130,7 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 	}
 
 	// Attach B* and U* to the response metadata
-	newMD := metadata.Pairs("B*", strconv.Itoa(currentThresholdB), "U*", strconv.Itoa(currentThresholdU))
+	newMD := metadata.Pairs("b-star", strconv.Itoa(currentThresholdB), "u-star", strconv.Itoa(currentThresholdU))
 	logger("Attached B*, U* to the response metadata: B*=%d, U*=%d", currentThresholdB, currentThresholdU)
 	grpc.SendHeader(ctx, newMD)
 

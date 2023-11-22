@@ -42,8 +42,8 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 	}
 
 	// Check if B and U are in the metadata
-	BValues, BExists := md["B"]
-	UValues, UExists := md["U"]
+	BValues, BExists := md["b"]
+	UValues, UExists := md["u"]
 
 	if !BExists || !UExists {
 		// if B or U not in metadata, this client is end user, otherwise, fatal error
@@ -83,7 +83,7 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 		// return status.Errorf(codes.ResourceExhausted, "B* and U* values not found in the threshold table, request dropped")
 	}
 	// Modify ctx with the B and U
-	ctx = metadata.AppendToOutgoingContext(ctx, "B", strconv.Itoa(B), "U", strconv.Itoa(U))
+	// ctx = metadata.AppendToOutgoingContext(ctx, "b", strconv.Itoa(B), "u", strconv.Itoa(U))
 
 	// Invoking the gRPC call
 	var header metadata.MD
@@ -93,8 +93,8 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 	}
 
 	// Store received B* and U* values from the header
-	BstarValues := header.Get("B*")
-	UstarValues := header.Get("U*")
+	BstarValues := header.Get("b-star")
+	UstarValues := header.Get("u-star")
 	if len(BstarValues) > 0 && len(UstarValues) > 0 {
 		Bstar, _ := strconv.Atoi(BstarValues[0])
 		Ustar, _ := strconv.Atoi(UstarValues[0])
