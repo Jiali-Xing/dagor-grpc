@@ -100,7 +100,7 @@ func NewDagorNode(params DagorParam) *Dagor {
 	logger("Beta: %v", dagor.beta)
 	logger("Umax: %v", dagor.Umax)
 	logger("Bmax: %v", dagor.Bmax)
-	debug = params.debug
+	debug = params.Debug
 	logger("Debug: %v", debug)
 	return &dagor
 }
