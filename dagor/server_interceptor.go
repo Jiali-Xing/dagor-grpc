@@ -116,10 +116,10 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 	currentThresholdU := currentThresholdUVal.(int) // Assert the type to int
 
 	// If the request's B and U don't meet the threshold, drop the request
-	if B < currentThresholdB || U < currentThresholdU {
-		logger("Request B, U %d, %d values are below the threshold %d, %d", B, U, currentThresholdB, currentThresholdU)
+	if B >= currentThresholdB && U >= currentThresholdU {
+		logger("[AQM Server Drop Req] Request B, U %d, %d values are above the threshold %d, %d", B, U, currentThresholdB, currentThresholdU)
 		d.UpdateHistogram(false, B, U)
-		return nil, status.Errorf(codes.ResourceExhausted, "[Server Admission Control] Request B, U values are below the threshold")
+		return nil, status.Errorf(codes.ResourceExhausted, "[Server Admission Control] Request B, U values do not meet the threshold")
 	}
 	d.UpdateHistogram(true, B, U)
 
@@ -270,10 +270,10 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 
 	// Iterate over the range of B and U values. but notice that the loop starts from the max values.
 	// the paper says that the loop starts from the min values, but it doesn't make sense to me.
-	// for B := 1; B <= d.Bmax; B++ {
-	// 	for U := 1; U <= d.Umax; U++ {
-	for B := d.Bmax; B >= 1; B-- {
-		for U := d.Umax; U >= 1; U-- {
+	// for B := d.Bmax; B >= 1; B-- {
+	// 	for U := d.Umax; U >= 1; U-- {
+	for B := 1; B <= d.Bmax; B++ {
+		for U := 1; U <= d.Umax; U++ {
 			// Retrieve the count for this B, U combination from the C matrix
 			val, loaded := d.C.Load([2]int{B, U})
 			if loaded {
