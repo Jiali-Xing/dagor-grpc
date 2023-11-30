@@ -38,8 +38,14 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 		} else {
 			// can't find the business value from businessMap
 			// return nil, status.Errorf(codes.Internal, "Business value for method %s not found", methodName)
-			// assign a random business value
-			B = rand.Intn(d.Bmax)
+			// assign a random business value between 1 and Bmax
+			B = rand.Intn(d.Bmax) + 1
+			// make sure the business value is not yet assigned
+			for _, v := range d.businessMap {
+				if v == B {
+					B = rand.Intn(d.Bmax) + 1
+				}
+			}
 			d.businessMap[methodName] = B
 			logger("[Entry service] Entry service can't find Business value for method %s, assigned a random value %d", methodName, B)
 		}
