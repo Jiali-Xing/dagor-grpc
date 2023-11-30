@@ -79,7 +79,7 @@ func (d *Dagor) UnaryInterceptorClient(ctx context.Context, method string, req i
 		}
 		logger("[Ratelimiting] B %d and U %d values below the threshold B* %d and U* %d, request sent", B, U, threshold.Bstar, threshold.Ustar)
 	} else {
-		logger("[Ratelimiting] B* and U* values not found in the threshold table for method %s, request dropped", methodName[0])
+		logger("[Ratelimiting] B* and U* values not found in the threshold table for method %s.", methodName[0])
 		// return status.Errorf(codes.ResourceExhausted, "B* and U* values not found in the threshold table, request dropped")
 	}
 	// Modify ctx with the B and U
