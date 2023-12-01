@@ -72,8 +72,8 @@ func NewDagorNode(params DagorParam) *Dagor {
 		Bmax:                         params.Bmax,
 		// C:                            params.C,
 	}
-	dagor.admissionLevel.Store("B", 0)
-	dagor.admissionLevel.Store("U", 0)
+	dagor.admissionLevel.Store("B", dagor.Bmax)
+	dagor.admissionLevel.Store("U", dagor.Umax)
 	rand.Seed(time.Now().UnixNano())
 
 	// Initialize the C matrix with the initial counters for each B, U pair
