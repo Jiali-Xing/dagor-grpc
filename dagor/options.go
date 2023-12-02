@@ -30,6 +30,7 @@ type Dagor struct {
 	Bmax                         int
 	C                            sync.Map
 	N                            int64 // Use int64 to be compatible with atomic operations
+	Nadm                         int64 // Use int64 to be compatible with atomic operations
 	// C is a two-dimensional array or a map that corresponds to the counters for each B, U pair.
 	// You need to initialize this with the actual data structure you are using.
 }

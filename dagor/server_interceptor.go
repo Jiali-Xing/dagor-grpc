@@ -126,12 +126,16 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 	currentThresholdU := currentThresholdUVal.(int) // Assert the type to int
 
 	// If the request's B and U don't meet the threshold, drop the request
-	if B >= currentThresholdB && U >= currentThresholdU {
+	if B < currentThresholdB || (B == currentThresholdB && U < currentThresholdU) {
+		logger("[AQM Server Admit Req] Request B, U %d, %d values are below the threshold %d, %d", B, U, currentThresholdB, currentThresholdU)
+		// use go routine to update the histogram d.UpdateHistogram(true, B, U)
+		go d.UpdateHistogram(true, B, U)
+	} else {
+		// if B >= currentThresholdB && U >= currentThresholdU {
 		logger("[AQM Server Drop Req] Request B, U %d, %d values are above the threshold %d, %d", B, U, currentThresholdB, currentThresholdU)
-		d.UpdateHistogram(false, B, U)
+		go d.UpdateHistogram(false, B, U)
 		return nil, status.Errorf(codes.ResourceExhausted, "[Server Admission Control] Request B, U values do not meet the threshold")
 	}
-	d.UpdateHistogram(true, B, U)
 
 	// Handle the request
 	resp, err := handler(ctx, req)
@@ -221,6 +225,7 @@ func (d *Dagor) UpdateAdmissionLevel() {
 func (d *Dagor) ResetHistogram() {
 	// Reset the N to 0
 	d.UpdateN(0)
+	d.UpdateNadm(0)
 	// Reset the C matrix which holds the admitted request counters
 	d.C.Range(func(key, value interface{}) bool {
 		d.C.Store(key, int64(0))
@@ -233,71 +238,99 @@ func (d *Dagor) UpdateHistogram(admitted bool, B, U int) {
 	// increment the counter N
 	d.IncrementN()
 	logger("[UpdateHistogram] N incremented to %d", d.ReadN())
-	if admitted {
-		key := [2]int{B, U}
-		// This loop ensures that we keep trying to update the value
-		// until we are successful in case of concurrent updates
-		for {
-			// Load the current value
-			val, loaded := d.C.Load(key)
-			// Store the incremented count using CompareAndSwap
-			// This is thread-safe because it only succeeds if the value hasn't been changed by another goroutine in the meantime
-			if !loaded {
-				// If the key doesn't exist, initialize it to 1
-				// Since we are in a loop, we need to check if the initialization was successful
-				if d.C.CompareAndSwap(key, nil, int64(1)) {
-					logger("[UpdateHistogram] C [%d, %d] (B, U) counter initialized to 1", B, U)
-					break
-				}
-			} else {
-				count := val.(int64) + 1
-				// Compare and swap the value if it's still the same; otherwise, the loop will retry
-				if d.C.CompareAndSwap(key, val, count) {
-					logger("[UpdateHistogram] C [%d, %d] (B, U) counter incremented to %d", B, U, count)
-					break
-				}
+	key := [2]int{B, U}
+	// This loop ensures that we keep trying to update the value
+	// until we are successful in case of concurrent updates
+	for {
+		// Load the current value
+		val, loaded := d.C.Load(key)
+		// Store the incremented count using CompareAndSwap
+		// This is thread-safe because it only succeeds if the value hasn't been changed by another goroutine in the meantime
+		if !loaded {
+			// If the key doesn't exist, initialize it to 1
+			// Since we are in a loop, we need to check if the initialization was successful
+			if d.C.CompareAndSwap(key, nil, int64(1)) {
+				logger("[UpdateHistogram] C [%d, %d] (B, U) counter initialized to 1", B, U)
+				break
+			}
+		} else {
+			count := val.(int64) + 1
+			// Compare and swap the value if it's still the same; otherwise, the loop will retry
+			if d.C.CompareAndSwap(key, val, count) {
+				logger("[UpdateHistogram] C [%d, %d] (B, U) counter incremented to %d", B, U, count)
+				break
 			}
 		}
+	}
+	if admitted {
+		d.IncrementNadm()
 	}
 }
 
 // CalculateAdmissionLevel adjusts the B and U based on the overload flag
 func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
-	Nexp := d.ReadN()
-
+	Nprefix := d.ReadNadm()
+	// declare Bstar and Ustar
+	var Bstar, Ustar int
 	// Adjust Nexp based on overload
 	if foverload {
-		Nexp = int64((1 - d.alpha) * float64(Nexp))
-		logger("[CalculateAdmissionLevel] overload detected, Nexp updated from %d to %d", d.ReadN(), Nexp)
-	} else {
-		Nexp = int64((1 + d.beta) * float64(Nexp))
-		logger("[CalculateAdmissionLevel] no overload detected, Nexp updated from %d to %d", d.ReadN(), Nexp)
-	}
-
-	Bstar, Ustar := 0, 0
-	// Nprefix int64
-	Nprefix := int64(0)
-
-	// Iterate over the range of B and U values. but notice that the loop starts from the max values.
-	// the paper says that the loop starts from the min values, but it doesn't make sense to me.
-	// for B := d.Bmax; B >= 1; B-- {
-	// 	for U := d.Umax; U >= 1; U-- {
-	for B := 1; B <= d.Bmax; B++ {
-		for U := 1; U <= d.Umax; U++ {
-			// Retrieve the count for this B, U combination from the C matrix
-			val, loaded := d.C.Load([2]int{B, U})
-			if loaded {
-				Nprefix += val.(int64)
-				if Nprefix > Nexp {
-					logger("[CalculateAdmissionLevel] Nprefix %d > Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
-					return Bstar, Ustar
-					// } else {
-					// logger("[CalculateAdmissionLevel] Nprefix %d <= Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
+		Nexp := int64((1 - d.alpha) * float64(d.ReadNadm()))
+		logger("[CalculateAdmissionLevel] overload detected, Nexp updated from %d to %d", d.ReadNadm(), Nexp)
+		// while Nprefix > Nexp and (B∗, U∗) > (1, 1)
+		Bstar, Ustar = d.Bmax, d.Umax
+		for Nprefix > Nexp && (Bstar > 1 || Ustar > 1) {
+			Ustar = Ustar - 1
+			if Ustar < 1 {
+				if Bstar > 1 {
+					Bstar = Bstar - 1
+					Ustar = d.Umax
+				} else {
+					Ustar = 1
 				}
 			}
-			Bstar, Ustar = B, U
+			val, _ := d.C.Load([2]int{Bstar, Ustar})
+			Nprefix = Nprefix - val.(int64)
+		}
+	} else {
+		Nexp := d.ReadNadm() + int64(d.beta*float64(d.ReadN()))
+		logger("[CalculateAdmissionLevel] no overload detected, Nexp updated from %d to %d", d.ReadNadm(), Nexp)
+		// while Nprefix < Nexp and (B∗, U∗) < (BH , UH ) do
+		Bstar, Ustar = 1, 1
+		for Nprefix < Nexp && (Bstar < d.Bmax || Ustar < d.Umax) {
+			Ustar = Ustar + 1
+			if Ustar > d.Umax {
+				if Bstar < d.Bmax {
+					Bstar = Bstar + 1
+					Ustar = 1
+				} else {
+					Ustar = d.Umax
+				}
+			}
+			val, _ := d.C.Load([2]int{Bstar, Ustar})
+			Nprefix = Nprefix + val.(int64)
 		}
 	}
+
+	// // Iterate over the range of B and U values. but notice that the loop starts from the max values.
+	// // the paper says that the loop starts from the min values, but it doesn't make sense to me.
+	// // for B := d.Bmax; B >= 1; B-- {
+	// // 	for U := d.Umax; U >= 1; U-- {
+	// for B := 1; B <= d.Bmax; B++ {
+	// 	for U := 1; U <= d.Umax; U++ {
+	// 		// Retrieve the count for this B, U combination from the C matrix
+	// 		val, loaded := d.C.Load([2]int{B, U})
+	// 		if loaded {
+	// 			Nprefix += val.(int64)
+	// 			if Nprefix > Nexp {
+	// 				logger("[CalculateAdmissionLevel] Nprefix %d > Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
+	// 				return Bstar, Ustar
+	// 				// } else {
+	// 				// logger("[CalculateAdmissionLevel] Nprefix %d <= Nexp %d, B* %d, U* %d", Nprefix, Nexp, B, U)
+	// 			}
+	// 		}
+	// 		Bstar, Ustar = B, U
+	// 	}
+	// }
 	// If the loop completes without returning, update the admission level with the max values
 	return Bstar, Ustar
 }

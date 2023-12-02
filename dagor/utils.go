@@ -15,6 +15,22 @@ func logger(format string, a ...interface{}) {
 	}
 }
 
+func (d *Dagor) ReadNadm() int64 {
+	return atomic.LoadInt64(&d.Nadm)
+}
+
+func (d *Dagor) UpdateNadm(newN int64) {
+	atomic.StoreInt64(&d.Nadm, newN)
+}
+
+func (d *Dagor) IncrementNadm() {
+	atomic.AddInt64(&d.Nadm, 1)
+}
+
+func (d *Dagor) DecrementNadm() {
+	atomic.AddInt64(&d.Nadm, -1)
+}
+
 func (d *Dagor) ReadN() int64 {
 	return atomic.LoadInt64(&d.N)
 }
