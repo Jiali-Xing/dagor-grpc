@@ -270,6 +270,10 @@ func (d *Dagor) UpdateHistogram(admitted bool, B, U int) {
 // CalculateAdmissionLevel adjusts the B and U based on the overload flag
 func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 	Nprefix := d.ReadNadm()
+	if Nprefix == 0 {
+		logger("[CalculateAdmissionLevel] Nprefix is 0, returning Bmax, Umax")
+		return d.Bmax, d.Umax
+	}
 	// declare Bstar and Ustar
 	var Bstar, Ustar int
 	// Adjust Nexp based on overload
@@ -278,7 +282,7 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 		logger("[CalculateAdmissionLevel] overload detected, Nexp updated from %d to %d", d.ReadNadm(), Nexp)
 		// while Nprefix > Nexp and (B∗, U∗) > (1, 1)
 		Bstar, Ustar = d.Bmax, d.Umax
-		for Nprefix > Nexp && (Bstar > 1 || Ustar > 1) {
+		for Nprefix >= Nexp && (Bstar > 1 || Ustar > 1) {
 			Ustar = Ustar - 1
 			if Ustar < 1 {
 				if Bstar > 1 {
@@ -296,7 +300,7 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 		logger("[CalculateAdmissionLevel] no overload detected, Nexp updated from %d to %d", d.ReadNadm(), Nexp)
 		// while Nprefix < Nexp and (B∗, U∗) < (BH , UH ) do
 		Bstar, Ustar = 1, 1
-		for Nprefix < Nexp && (Bstar < d.Bmax || Ustar < d.Umax) {
+		for Nprefix <= Nexp && (Bstar < d.Bmax || Ustar < d.Umax) {
 			Ustar = Ustar + 1
 			if Ustar > d.Umax {
 				if Bstar < d.Bmax {
