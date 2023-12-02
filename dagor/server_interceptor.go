@@ -126,7 +126,7 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 	currentThresholdU := currentThresholdUVal.(int) // Assert the type to int
 
 	// If the request's B and U don't meet the threshold, drop the request
-	if B < currentThresholdB || (B == currentThresholdB && U < currentThresholdU) {
+	if B < currentThresholdB || (B == currentThresholdB && U <= currentThresholdU) {
 		logger("[AQM Server Admit Req] Request B, U %d, %d values are below the threshold %d, %d", B, U, currentThresholdB, currentThresholdU)
 		// use go routine to update the histogram d.UpdateHistogram(true, B, U)
 		go d.UpdateHistogram(true, B, U)
