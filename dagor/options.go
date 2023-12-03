@@ -31,6 +31,8 @@ type Dagor struct {
 	C                            sync.Map
 	N                            int64 // Use int64 to be compatible with atomic operations
 	Nadm                         int64 // Use int64 to be compatible with atomic operations
+	UseSyncMap                   bool
+	CM                           *CounterMatrix
 	// C is a two-dimensional array or a map that corresponds to the counters for each B, U pair.
 	// You need to initialize this with the actual data structure you are using.
 }
@@ -52,6 +54,7 @@ type DagorParam struct {
 	Umax                         int
 	Bmax                         int
 	Debug                        bool
+	UseSyncMap                   bool
 }
 
 // NewDagorNode creates a new DAGOR node without a UUID.
@@ -71,17 +74,23 @@ func NewDagorNode(params DagorParam) *Dagor {
 		beta:                         params.Beta,
 		Umax:                         params.Umax,
 		Bmax:                         params.Bmax,
-		// C:                            params.C,
+		UseSyncMap:                   params.UseSyncMap,
+		CM:                           NewCounterMatrix(params.Bmax, params.Umax),
 	}
 	dagor.admissionLevel.Store("B", dagor.Bmax)
 	dagor.admissionLevel.Store("U", dagor.Umax)
 	rand.Seed(time.Now().UnixNano())
 
-	// Initialize the C matrix with the initial counters for each B, U pair
-	for B := 1; B <= params.Bmax; B++ {
-		for U := 1; U <= params.Umax; U++ {
-			dagor.C.Store([2]int{B, U}, int64(0))
+	if dagor.UseSyncMap {
+		// Initialize the C matrix with the initial counters for each B, U pair
+		for B := 1; B <= params.Bmax; B++ {
+			for U := 1; U <= params.Umax; U++ {
+				dagor.C.Store([2]int{B, U}, int64(0))
+			}
 		}
+	} else {
+		// Initialize the C matrix with the initial counters for each B, U pair
+		dagor.CM.Reset()
 	}
 
 	if !dagor.isEnduser {
@@ -103,5 +112,6 @@ func NewDagorNode(params DagorParam) *Dagor {
 	logger("Bmax: %v", dagor.Bmax)
 	debug = params.Debug
 	logger("Debug: %v", debug)
+	logger("Use sync map: %v", dagor.UseSyncMap)
 	return &dagor
 }

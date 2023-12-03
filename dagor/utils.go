@@ -46,3 +46,46 @@ func (d *Dagor) IncrementN() {
 func (d *Dagor) DecrementN() {
 	atomic.AddInt64(&d.N, -1)
 }
+
+// CounterMatrix holds a 2D slice of atomic counters
+type CounterMatrix struct {
+	Counters [][]*int64
+}
+
+// NewCounterMatrix initializes a CounterMatrix with the given dimensions
+func NewCounterMatrix(bMax, uMax int) *CounterMatrix {
+	matrix := make([][]*int64, bMax)
+	for i := range matrix {
+		matrix[i] = make([]*int64, uMax)
+		for j := range matrix[i] {
+			var counter int64
+			matrix[i][j] = &counter // Initialize all counters to zero
+		}
+	}
+	return &CounterMatrix{Counters: matrix}
+}
+
+// Increment safely increments the counter at the given B and U indices
+func (m *CounterMatrix) Increment(B, U int) {
+	// Decrement B and U to use as zero-based indices for the slice
+	B--
+	U--
+	atomic.AddInt64(m.Counters[B][U], 1)
+}
+
+// Get safely retrieves the current value of the counter at the given B and U indices
+func (m *CounterMatrix) Get(B, U int) int64 {
+	// Decrement B and U to use as zero-based indices for the slice
+	B--
+	U--
+	return atomic.LoadInt64(m.Counters[B][U])
+}
+
+// Reset sets all counters in the matrix to zero
+func (m *CounterMatrix) Reset() {
+	for i := range m.Counters {
+		for j := range m.Counters[i] {
+			atomic.StoreInt64(m.Counters[i][j], 0)
+		}
+	}
+}

@@ -227,10 +227,15 @@ func (d *Dagor) ResetHistogram() {
 	d.UpdateN(0)
 	d.UpdateNadm(0)
 	// Reset the C matrix which holds the admitted request counters
-	d.C.Range(func(key, value interface{}) bool {
-		d.C.Store(key, int64(0))
-		return true
-	})
+	if d.UseSyncMap {
+		d.C.Range(func(key, value interface{}) bool {
+			d.C.Store(key, int64(0))
+			return true
+		})
+	} else {
+		d.CM.Reset()
+	}
+	logger("[ResetHistogram] N and C matrix reset")
 }
 
 func (d *Dagor) UpdateHistogram(admitted bool, B, U int) {
@@ -241,27 +246,34 @@ func (d *Dagor) UpdateHistogram(admitted bool, B, U int) {
 	key := [2]int{B, U}
 	// This loop ensures that we keep trying to update the value
 	// until we are successful in case of concurrent updates
-	for {
-		// Load the current value
-		val, loaded := d.C.Load(key)
-		// Store the incremented count using CompareAndSwap
-		// This is thread-safe because it only succeeds if the value hasn't been changed by another goroutine in the meantime
-		if !loaded {
-			// If the key doesn't exist, initialize it to 1
-			// Since we are in a loop, we need to check if the initialization was successful
-			if d.C.CompareAndSwap(key, nil, int64(1)) {
-				logger("[UpdateHistogram] C [%d, %d] (B, U) counter initialized to 1", B, U)
-				break
-			}
-		} else {
-			count := val.(int64) + 1
-			// Compare and swap the value if it's still the same; otherwise, the loop will retry
-			if d.C.CompareAndSwap(key, val, count) {
-				logger("[UpdateHistogram] C [%d, %d] (B, U) counter incremented to %d", B, U, count)
-				break
+	if d.UseSyncMap {
+		for {
+			// Load the current value
+			val, loaded := d.C.Load(key)
+			// Store the incremented count using CompareAndSwap
+			// This is thread-safe because it only succeeds if the value hasn't been changed by another goroutine in the meantime
+			if !loaded {
+				// If the key doesn't exist, initialize it to 1
+				// Since we are in a loop, we need to check if the initialization was successful
+				if d.C.CompareAndSwap(key, nil, int64(1)) {
+					logger("[UpdateHistogram] C [%d, %d] (B, U) counter initialized to 1", B, U)
+					break
+				}
+			} else {
+				count := val.(int64) + 1
+				// Compare and swap the value if it's still the same; otherwise, the loop will retry
+				if d.C.CompareAndSwap(key, val, count) {
+					logger("[UpdateHistogram] C [%d, %d] (B, U) counter incremented to %d", B, U, count)
+					break
+				}
 			}
 		}
+	} else {
+		// This is an alternative implementation using a map
+		d.CM.Increment(B, U)
+		logger("[UpdateHistogram] C [%d, %d] (B, U) counter incremented to %d", B, U, d.CM.Get(B, U))
 	}
+
 	if admitted {
 		d.IncrementNadm()
 	}
@@ -292,8 +304,12 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 					Ustar = 1
 				}
 			}
-			val, _ := d.C.Load([2]int{Bstar, Ustar})
-			Nprefix = Nprefix - val.(int64)
+			if d.UseSyncMap {
+				val, _ := d.C.Load([2]int{Bstar, Ustar})
+				Nprefix = Nprefix - val.(int64)
+			} else {
+				Nprefix = Nprefix - d.CM.Get(Bstar, Ustar)
+			}
 		}
 	} else {
 		Nexp := d.ReadNadm() + int64(d.beta*float64(d.ReadN()))
@@ -310,8 +326,12 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 					Ustar = d.Umax
 				}
 			}
-			val, _ := d.C.Load([2]int{Bstar, Ustar})
-			Nprefix = Nprefix + val.(int64)
+			if d.UseSyncMap {
+				val, _ := d.C.Load([2]int{Bstar, Ustar})
+				Nprefix = Nprefix + val.(int64)
+			} else {
+				Nprefix = Nprefix + d.CM.Get(Bstar, Ustar)
+			}
 		}
 	}
 
