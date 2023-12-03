@@ -55,7 +55,8 @@ func (d *Dagor) UnaryInterceptorServer(ctx context.Context, req interface{}, inf
 				U = val.(int)
 				logger("[Entry service] User %s already has a priority value assigned: %d", userID, U)
 			} else {
-				U = rand.Intn(d.Umax) // Assign a random int for U
+				// Assign a random int for U between 1 and Umax
+				U = rand.Intn(d.Umax) + 1
 				d.userPriority.Store(userID, U)
 				logger("User %s assigned a priority value: %d", userID, U)
 			}
@@ -243,10 +244,10 @@ func (d *Dagor) UpdateHistogram(admitted bool, B, U int) {
 	// increment the counter N
 	d.IncrementN()
 	logger("[UpdateHistogram] N incremented to %d", d.ReadN())
-	key := [2]int{B, U}
-	// This loop ensures that we keep trying to update the value
-	// until we are successful in case of concurrent updates
 	if d.UseSyncMap {
+		key := [2]int{B, U}
+		// This loop ensures that we keep trying to update the value
+		// until we are successful in case of concurrent updates
 		for {
 			// Load the current value
 			val, loaded := d.C.Load(key)
