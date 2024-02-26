@@ -313,7 +313,7 @@ func (d *Dagor) CalculateAdmissionLevel(foverload bool) (int, int) {
 			}
 		}
 	} else {
-		Nexp := d.ReadNadm() + int64(d.beta*float64(d.ReadN()))
+		Nexp := d.ReadNadm() + int64(d.beta*float64(d.ReadN())+1) // but take ceiling of the second term
 		logger("[CalculateAdmissionLevel] no overload detected, Nexp updated from %d to %d", d.ReadNadm(), Nexp)
 		// while Nprefix < Nexp and (B∗, U∗) < (BH , UH ) do
 		Bstar, Ustar = 1, 1

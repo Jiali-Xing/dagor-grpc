@@ -2,7 +2,10 @@ module github.com/Jiali-Xing/dagor-grpc
 
 go 1.21.2
 
-require google.golang.org/grpc v1.59.0
+require (
+	github.com/google/uuid v1.3.1
+	google.golang.org/grpc v1.59.0
+)
 
 require (
 	github.com/golang/protobuf v1.5.3 // indirect
