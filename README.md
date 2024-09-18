@@ -1,6 +1,3 @@
-Certainly, here is the `README.md` file content in Markdown format, updated to reflect the Apache 2.0 license.
-
-```markdown
 # dagor-grpc
 
 ## Overview
