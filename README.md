@@ -1,8 +1,15 @@
-# dagor-grpc
+## DAGOR Open Source Implementation - README
 
-## Overview
+### Overview
 
-`dagor-grpc` is a gRPC interceptor library designed to extend the functionalities of gRPC servers and clients. The library aims to enhance gRPC communications by introducing features such as logging, authentication, and more.
+`dagor-grpc` is a gRPC interceptor library.
+This repository contains an open-source implementation of the **DAGOR** overload control mechanism, which was originally proposed in the paper *"Overload Control for Scaling WeChat Microservices"*. We have followed the algorithm described in the paper to build this implementation.
+
+DAGOR is designed to manage overload in microservices by dynamically adjusting request admission levels based on both business and user priorities. It aims to maintain high throughput during overload situations by shedding excess load collaboratively across microservices.
+
+### Thread Safety
+In the DAGOR implementation, we use Go's **`sync.Map`** for concurrent data access to shared resources and **atomic operations** for safely updating request counters, admission levels, and overload indicators. This ensures that the system can handle high-concurrency environments typical in microservice architectures without performance degradation due to locking contention.
+
 
 ## Installation
 

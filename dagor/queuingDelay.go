@@ -159,60 +159,6 @@ func readHistogram() *metrics.Float64Histogram {
 	return currHist
 }
 
-/*
-// queuingCheck checks if the queuing delay of go routine is greater than the latency SLO.
-func main() {
-	// init a null histogram
-	var prevHist *metrics.Float64Histogram
-
-	// run computation with 100 go routines, each 10000ms
-	for i := 0; i < 10000; i++ {
-		go computation(50000)
-	}
-
-	for range time.Tick(time.Second) {
-		// create a new incoming context with the "request-id" as "0"
-		const queueingDelay = "/sched/latencies:seconds"
-
-		// Create a sample for the metric.
-		sample := make([]metrics.Sample, 1)
-		sample[0].Name = queueingDelay
-
-		// Sample the metric.
-		metrics.Read(sample)
-
-		// Check if the metric is actually supported.
-		// If it's not, the resulting value will always have
-		// kind KindBad.
-		if sample[0].Value.Kind() == metrics.KindBad {
-			panic(fmt.Sprintf("metric %q no longer supported", queueingDelay))
-		}
-
-		// get the current histogram
-		currHist := sample[0].Value.Float64Histogram()
-		// calculate the differernce between the two histograms prevHist and currHist
-		diff := metrics.Float64Histogram{}
-		// if preHist is empty pointer, return currHist
-		if prevHist == nil {
-			diff = *currHist
-		} else {
-			diff = GetHistogramDifference(*prevHist, *currHist)
-		}
-		// printHistogram(&diff)
-		printHistogram(currHist)
-		// medianLatency is the median of the histogram in milliseconds.
-		medianLatency := medianBucket(&diff)
-		cmedianLatency := medianBucket(currHist)
-
-		fmt.Printf("[Sampled Cumulative Waiting Time]:	%f ms.\n", cmedianLatency)
-		fmt.Printf("[Sampled Difference Waiting Time]:	%f ms.\n", medianLatency)
-
-		// copy the content of current histogram to the previous histogram
-		prevHist = currHist
-	}
-}
-*/
-
 // func printHistogram(h *metrics.Float64Histogram) prints the content of histogram h
 func printHistogram(h *metrics.Float64Histogram) {
 	// fmt.Printf("Histogram: %v\n", h)
