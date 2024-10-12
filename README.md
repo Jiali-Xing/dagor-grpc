@@ -1,4 +1,4 @@
-## DAGOR Open Source Implementation - README
+## DAGOR Open Source Implementation
 
 ### Overview
 
